@@ -117,24 +117,30 @@ pub mod shaders {
     }
 
     // only for u8, i8 and char!
-    pub struct ShaderSource<T> {
-        src: T,
+    pub enum ShaderSource<T> {
+        Raw(&Vec<T>),
+        Cstr(&ffi::CStr),
     }
 
-    impl ShaderSource<i8> {
-        pub(crate) fn to_cstr(&mut self) {
-            self.src = match ffi::CStr::from_bytes_with_nul(&self.src) {
-                Ok(cstr) => cstr,
-                Err(e) => panic!("Failed to create shader source: {}\n Remember to end your shader source with \0!", e),
-            };
+    impl ShaderSource<u8> {
+        pub(crate) fn to_cstr(self) {
+            match self {
+                ShaderSource::Cstr(v) => self,
+                ShaderSource::Raw(t) => ffi::CStr::from_bytes_with_nul(t)?
+            }
         }
     }
     
-    unsafe fn compile_shader(kind: GLenum, source: &ShaderSource<T>) -> u32 {
+    unsafe fn compile_shader(kind: GLenum, source: &ShaderSource<u8>) -> u32 {
         let id: u32 = gl::CreateShader(kind);
-        
-        gl::ShaderSource(id, 1, &source.to_cstr().as_ptr(), 0 as *const _);
-        gl::CompileShader(id);
+
+        match source {
+            ShaderSource::Cstr(t) => {
+                gl::ShaderSource(id, 1, &t.as_ptr(), 0 as *const _);
+                gl::CompileShader(id);
+            },
+            ShaderSource::Raw(v) => compile_shader(kind, source.to_cstr()),
+        }
 
         // TODO: Error handling (-> compilation errors)
         
@@ -142,7 +148,7 @@ pub mod shaders {
     }
     
     impl Shader2D {
-        pub(crate) fn new(fragment_source: ShaderSource<T>, vertex_source: ShaderSource<T>) -> Shader2D {
+        pub(crate) fn new(fragment_source: ShaderSource<u8>, vertex_source: ShaderSource<u8>) -> Shader2D {
             let handle: u32;
             
             unsafe {
