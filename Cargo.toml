@@ -4,6 +4,14 @@ version = "0.1.0"
 authors = ["RealAngelaMerkel <mnerius@gmx.de>"]
 edition = "2018"
 
+[lib]
+name = "ogl"
+path = "src/lib.rs"
+
+[[bin]]
+name = "ogl"
+path = "src/main.rs"
+
 # dependencies for gl
 [dependencies]
 gl = "0.6.0"

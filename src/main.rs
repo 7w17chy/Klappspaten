@@ -1,5 +1,5 @@
 use glfw::{Action, Context, Key};
-use gl::types::*;
+use ::ogl::{gl_helper_functions, buffers, shaders};
 
 fn main() {
     // initialising glfw
@@ -18,16 +18,55 @@ fn main() {
     println!("OpenGL version: {}", gl_helper_functions::get_gl_string(gl::VERSION));
 
     // vertex positions
-    let positions: Vec<f32> = vec![
+    #[allow(unused_variables)]
+    let mut positions: Vec<f32> = vec![
         -0.5, -0.5,
-        0.5, -0.5,
-        0.5,  0.5,
+         0.5, -0.5,
+         0.5,  0.5,
         -0.5,  0.5
     ];
 
     // create vertex buffer with vertex positons
+    let vertbuf = buffers::VertexBuffer::new(&mut positions); // => TODO: currently throwing sigsevs!
+
+    // get source for shaders
+    // let fragment_source = shaders::ShaderSource::from_file("fragment.glsl");
+    // let vertex_source = shaders::ShaderSource::from_file("vertex.glsl");
+    let vertex_source = shaders::ShaderSource::from_string(String::from(
+        "
+#version 330 core\n
+layout(location = 0) in vec4 postion;\n
+void main()\n
+{\n
+   gl_Position = postion;\n
+}\n;
+"
+    ));
+
+    let fragment_source = shaders::ShaderSource::from_string(String::from(
+        "
+  #version 330 core\n
+ layout(location = 0) out vec4 color;\n
+ void main()\n
+ {\n
+    color = vec4(1.0, 0.0, 0.0, 1.0);\n
+ }\n
+"
+    ));
+
+    // create shader
+    let shader = shaders::Shader2D::new(fragment_source, vertex_source);
     
+    // main loop
     while !window.should_close() {
+        unsafe {
+            gl::Clear(gl::COLOR_BUFFER_BIT);
+            gl::DrawArrays(gl::TRIANGLES, 0, (positions.len()/2) as i32);
+        }
+        // swap front and back buffers
+        window.swap_buffers();
+
+        // poll for any events
         glfw.poll_events();
         for (_, event) in glfw::flush_messages(&events) {
             handle_window_event(&mut window, event);

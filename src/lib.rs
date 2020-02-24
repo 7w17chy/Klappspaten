@@ -1,10 +1,14 @@
-use std::io;
+/// NYAN NYAN NYAN!
+/// ·.,¸,.·*¯`·.,¸,.·....╭━━━━╮
+///`·.,¸,.·*¯`·.,¸,.·*¯. |::::::/\:__:/\
+/// `·.,¸,.·*¯`·.,¸,.·* <|:::::(｡ ◕‿‿ ◕).
+///  `·.,¸,.·*¯`·.,¸,.·* ╰O--O----O-O
 
 pub mod gl_helper_functions {
-    use gl::types::*;
+    use gl::types::GLenum;
     /// Get gl string. since gl::GetString returns a pointer to the beginning of the actual
     /// string in bytes, you have to convert it to a Rust string before using it.
-    pub(crate) fn get_gl_string(name: GLenum) -> String {
+    pub fn get_gl_string(name: GLenum) -> String {
         let mut charbuff: Vec<u8> = Vec::new();
 
         unsafe {
@@ -27,19 +31,22 @@ pub mod buffers {
     use gl::{self, types::GLenum};
     
     pub struct VertexBuffer {
-        pub handle: *mut u32,
+        pub handle: u32,        // just the 'name' of the buffer, it's not a pointer! 
+        pub ptr: *mut u32,      // points to the handle 
         pub is_bound: bool,
     }
 
     impl VertexBuffer {
-        pub(crate) fn new(positions: &mut [f32]) -> VertexBuffer {
-            let handle: *mut u32 = Vec::with_capacity(positions.len()).as_mut_ptr();
+        // TODO: currently throwing segfaults! (address boundary error)
+        pub fn new(positions: &mut [f32]) -> VertexBuffer {
+            let mut handle: u32 = 1; // if it's set to 0 and used with gl::BindBuffer, it will unbind all currently bound buffers!
+            let ptr: *mut u32 = &mut handle;
             unsafe {
-                gl::GenBuffers(1, handle);
-                gl::BindBuffer(gl::ARRAY_BUFFER, handle as u32);
+                gl::GenBuffers(1, ptr);
+                gl::BindBuffer(gl::ARRAY_BUFFER, handle);
                 gl::BufferData(gl::ARRAY_BUFFER, (positions.len() * std::mem::size_of::<f32>()) as isize,
                                positions.as_mut_ptr() as *const core::ffi::c_void, gl::STATIC_DRAW);
-                // std::mem::size_of<f32> * 2 => 2 floats per vertex
+                // std::mem::size_of::<f32> * 2 => 2 floats per vertex
                 gl::VertexAttribPointer(0, 2, gl::FLOAT, gl::FALSE, (std::mem::size_of::<f32>() * 2) as i32,
                                         0 as *const std::ffi::c_void);
                 gl::EnableVertexAttribArray(0);
@@ -47,56 +54,72 @@ pub mod buffers {
 
             VertexBuffer {
                 handle,
+                ptr,
                 is_bound: true,
             }
         }
         
-        pub(crate) fn bind(&self, kind: GLenum) -> Result<(), &'static str> {
-            // can't bind buffer that is already bound => throw an error
+        pub fn bind(&self, kind: GLenum) {
+            // can't bind buffer that is already bound => do nothing
             if self.is_bound {
-                return Err("Buffer already bound!");
+                return;
             }
 
-            unsafe { gl::BindBuffer(kind, self.handle as u32); }
-            Ok(())
+            unsafe { gl::BindBuffer(kind, self.handle); }
         }
+    }
+}
+
+pub mod fileops {
+    use std::ffi::CString;
+    use std::fs;
+
+    pub fn read_file_into_cstring(filename: &str) -> CString {
+        match fs::read(filename) {
+            Ok(vec) => return unsafe { CString::from_vec_unchecked(vec) },
+            Err(e) => panic!("Can't read file! {}", e),
+        };
     }
 }
 
 pub mod shaders {
     use gl::types::*;
-    use std::ffi;
+    use std::ffi::CString;
     
     pub struct Shader2D {
-        pub handle: *mut u32,
+        pub handle: u32,
         pub is_bound: bool,
     }
 
-    // only for u8, i8 and char!
-    pub enum ShaderSource<T> {
-        Raw(&Vec<T>),
-        Cstr(&ffi::CStr),
+    pub struct ShaderSource {
+        pub src: CString,
     }
 
-    impl ShaderSource<u8> {
-        pub(crate) fn to_cstr(self) {
-            match self {
-                ShaderSource::Cstr(v) => self,
-                ShaderSource::Raw(t) => ffi::CStr::from_bytes_with_nul(t)?
-            }
+    impl ShaderSource {
+        pub fn from_file(filename: &str) -> Self {
+            Self { src: super::fileops::read_file_into_cstring(filename), }
+        }
+
+        pub fn from_string(src: String) -> Self {
+            let cstring = match CString::new(src) {
+                Ok(cs) => cs,
+                Err(e) => panic!("Don't put an trailing '\0' in you source, lad! {}", e),
+            };
+
+            Self { src: cstring, }
+        }
+
+        pub fn from_byte_vec(src: Vec<u8>) -> Self {
+            Self { src: unsafe { CString::from_vec_unchecked(src) }, }
         }
     }
     
-    unsafe fn compile_shader(kind: GLenum, source: &ShaderSource<u8>) -> u32 {
+    unsafe fn compile_shader(kind: GLenum, source: ShaderSource) -> u32 {
         let id: u32 = gl::CreateShader(kind);
+        let pointer = source.src.as_ptr();
 
-        match source {
-            ShaderSource::Cstr(t) => {
-                gl::ShaderSource(id, 1, &t.as_ptr(), 0 as *const _);
-                gl::CompileShader(id);
-            },
-            ShaderSource::Raw(v) => compile_shader(kind, source.to_cstr()),
-        }
+        gl::ShaderSource(id, 1, &pointer, 0 as *const _);
+        gl::CompileShader(id);
 
         // TODO: Error handling (-> compilation errors)
         
@@ -104,7 +127,7 @@ pub mod shaders {
     }
     
     impl Shader2D {
-        pub(crate) fn new(fragment_source: ShaderSource<u8>, vertex_source: ShaderSource<u8>) -> Shader2D {
+        pub fn new(fragment_source: ShaderSource, vertex_source: ShaderSource) -> Shader2D {
             let handle: u32;
             
             unsafe {
@@ -129,7 +152,7 @@ pub mod shaders {
             }
         }
 
-        pub(crate) fn bind(&self) {
+        pub fn bind(&self) {
             unsafe {
                 gl::UseProgram(self.handle);
             }
