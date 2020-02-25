@@ -1,6 +1,5 @@
 use glfw::{Action, Context, Key, WindowHint};
 use core::ffi::c_void;
-use std::ffi::CString;
 use ::ogl::{gl_helper_functions, buffers, shaders};
 use std::process;
 
@@ -83,12 +82,20 @@ extern "system" fn callbackfn(source: u32, gltype: u32, id: u32, severity: u32, 
         Err(e) => panic!("GL error occurred (type: {:#x}), but was unable to convert the error message to a proper string! {}",
                          gltype, e),
     };
-    
-    eprintln!("\nGL error occurred!\nSource: {:#x}\nType: {:#x}\nId: {:#x}\nSeverity: {:#x}\n\nMessage: {}\n",
+
+    eprintln!("\nMessage from your precious graphics card driver:\nSource: {:#x}\nType: {:#x}\nId: {:#x}\nSeverity: {:#x}\n\nMessage: {}\n",
               source, gltype, id, severity, mess);
 
-    // to prevent printing the message over and over again, abort the program
-    process::abort();
+    if severity == gl::DEBUG_SEVERITY_HIGH {
+        eprintln!("aborting due to error (gl::DEBUG_SEVERITY_HIGH)");
+        process::abort();
+    } else if severity == gl::DEBUG_SEVERITY_MEDIUM {
+        eprintln!("Keep going. Severity level: DEBUG_SEVERITY_MEDIUM");
+    } else if severity == gl::DEBUG_SEVERITY_LOW {
+        eprintln!("Keep going. Severity level: DEBUG_SEVERITY_LOW");
+    } else if severity == gl::DEBUG_SEVERITY_NOTIFICATION {
+        eprintln!("Keep going. Severity level: DEBUG_SEVERITY_NOTIFICATION");
+    }
 }
 
 
