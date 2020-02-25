@@ -6,6 +6,7 @@
 
 pub mod gl_helper_functions {
     use gl::types::GLenum;
+
     /// Get gl string. since gl::GetString returns a pointer to the beginning of the actual
     /// string in bytes, you have to convert it to a Rust string before using it.
     pub fn get_gl_string(name: GLenum) -> String {
