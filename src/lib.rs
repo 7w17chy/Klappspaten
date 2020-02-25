@@ -76,7 +76,12 @@ pub mod fileops {
 
     pub fn read_file_into_cstring(filename: &str) -> CString {
         match fs::read(filename) {
-            Ok(vec) => return unsafe { CString::from_vec_unchecked(vec) },
+            Ok(vec) => {
+                match CString::new(vec) {
+                    Ok(c) => return c,
+                    Err(e) => panic!("Don't put any \0 characters in your source string, lad! {}", e),
+                };
+            }
             Err(e) => panic!("Can't read file! {}", e),
         };
     }

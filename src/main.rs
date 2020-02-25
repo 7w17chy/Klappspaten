@@ -1,6 +1,7 @@
 use glfw::{Action, Context, Key};
 use ::ogl::{gl_helper_functions, buffers, shaders};
 
+#[allow(unused_variables)]
 fn main() {
     // initialising glfw
     let mut glfw = glfw::init(glfw::FAIL_ON_ERRORS).unwrap();
@@ -27,32 +28,33 @@ fn main() {
     ];
 
     // create vertex buffer with vertex positons
-    let vertbuf = buffers::VertexBuffer::new(&mut positions); // => TODO: currently throwing sigsevs!
+    let vertbuf = buffers::VertexBuffer::new(&mut positions);
 
     // get source for shaders
-    // let fragment_source = shaders::ShaderSource::from_file("fragment.glsl");
-    // let vertex_source = shaders::ShaderSource::from_file("vertex.glsl");
-    let vertex_source = shaders::ShaderSource::from_string(String::from(
-        "
-#version 330 core\n
-layout(location = 0) in vec4 postion;\n
-void main()\n
-{\n
-   gl_Position = postion;\n
-}\n;
-"
-    ));
-
-    let fragment_source = shaders::ShaderSource::from_string(String::from(
-        "
-  #version 330 core\n
- layout(location = 0) out vec4 color;\n
- void main()\n
- {\n
-    color = vec4(1.0, 0.0, 0.0, 1.0);\n
- }\n
-"
-    ));
+    let fragment_source = shaders::ShaderSource::from_file("fragment.glsl"); // currently throwing segfaults
+    let vertex_source = shaders::ShaderSource::from_file("vertex.glsl");
+    
+//    let vertex_source = shaders::ShaderSource::from_string(String::from(
+//        "
+//#version 330 core\n
+//layout(location = 0) in vec4 postion;\n
+//void main()\n
+//{\n
+//   gl_Position = postion;\n
+//}\n;
+//"
+//    ));
+//
+//    let fragment_source = shaders::ShaderSource::from_string(String::from(
+//        "
+//  #version 330 core\n
+// layout(location = 0) out vec4 color;\n
+// void main()\n
+// {\n
+//    color = vec4(1.0, 0.0, 0.0, 1.0);\n
+// }\n
+//"
+//    ));
 
     // create shader
     let shader = shaders::Shader2D::new(fragment_source, vertex_source);
