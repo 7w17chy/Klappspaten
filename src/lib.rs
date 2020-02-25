@@ -66,6 +66,7 @@ pub mod buffers {
             }
         }
         
+        /// Bind vertex buffer. If it's already bound, do nothing
         pub fn bind(&self, kind: GLenum) {
             // can't bind buffer that is already bound => do nothing
             if self.is_bound {
@@ -115,6 +116,8 @@ pub mod shaders {
     /// For uniformity and abstraction. All functions dealing with creating a shader will take in a ShaderSource.
     /// They don't have to deal with error checking or conversion of any kind, that's all done by the
     /// ShaderSource type, either by it's creation, or by providing methods.
+    /// Also practical if you want to load all of your resources (obeject files, images, shader source, and so on)
+    /// on a seperate thread or on startup for later usage.
     pub struct ShaderSource {
         /// String that contains source code for a shader.
         pub src: CString,       
@@ -183,7 +186,11 @@ pub mod shaders {
             }
         }
 
+        /// Bind shader. If it's already bound, do nothing.
         pub fn bind(&self) {
+            if self.is_bound {
+                return;         // if it's already bound, do nothing
+            }
             unsafe {
                 gl::UseProgram(self.handle);
             }
