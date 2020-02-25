@@ -30,25 +30,32 @@ pub mod gl_helper_functions {
 pub mod buffers {
     use gl::{self, types::GLenum};
     
+    /// A representation of a vertex buffer.
     pub struct VertexBuffer {
-        pub handle: u32,        // just the 'name' of the buffer, it's not a pointer! 
-        pub ptr: *mut u32,      // points to the handle 
-        pub is_bound: bool,
+        /// just the 'name' of the buffer, it's not a pointer! 
+        pub handle: u32,        
+        /// points to the handle (=> 'name')
+        pub ptr: *mut u32,      
+        /// indicates whether the buffer is bound or not
+        pub is_bound: bool,     
     }
 
     impl VertexBuffer {
-        // TODO: currently throwing segfaults! (address boundary error)
-        pub fn new(positions: &mut [f32]) -> VertexBuffer {
+        /// Create vertex buffer, binding it in the process.
+        pub fn new(positions: &mut [f32], floats_per_vertex: usize) -> VertexBuffer {
             let mut handle: u32 = 1; // if it's set to 0 and used with gl::BindBuffer, it will unbind all currently bound buffers!
             let ptr: *mut u32 = &mut handle;
             unsafe {
                 gl::GenBuffers(1, ptr);
                 gl::BindBuffer(gl::ARRAY_BUFFER, handle);
+                // provide information about the data stored in the buffer.
                 gl::BufferData(gl::ARRAY_BUFFER, (positions.len() * std::mem::size_of::<f32>()) as isize,
                                positions.as_mut_ptr() as *const core::ffi::c_void, gl::STATIC_DRAW);
+                // tell opengl how your data is layed out in memory.
                 // std::mem::size_of::<f32> * 2 => 2 floats per vertex
-                gl::VertexAttribPointer(0, 2, gl::FLOAT, gl::FALSE, (std::mem::size_of::<f32>() * 2) as i32,
+                gl::VertexAttribPointer(0, floats_per_vertex as i32, gl::FLOAT, gl::FALSE, (std::mem::size_of::<f32>() * floats_per_vertex) as i32,
                                         0 as *const std::ffi::c_void);
+                // 'bind' it on position 0
                 gl::EnableVertexAttribArray(0);
             }
 
@@ -74,14 +81,19 @@ pub mod fileops {
     use std::ffi::CString;
     use std::fs;
 
+    /// Read a file and return its contents in form of a std::ffi::CString. As such, it's easier
+    /// to work with OpenGL function calls; you don't have to mess with converting it to a C-compatible
+    /// string, it's already one. Plus you can easily convert it into a Rust string.
     pub fn read_file_into_cstring(filename: &str) -> CString {
         match fs::read(filename) {
             Ok(vec) => {
+                // if a \0 character is found in the file you're reading, CString::new will return a NulError
                 match CString::new(vec) {
                     Ok(c) => return c,
-                    Err(e) => panic!("Don't put any \0 characters in your source string, lad! {}", e),
+                    Err(e) => panic!("Don't put any \0 characters in your file, lad! {}", e),
                 };
             }
+            // you could match on the returned ErrorKind val, but for now, let's panic!
             Err(e) => panic!("Can't read file! {}", e),
         };
     }
@@ -91,34 +103,47 @@ pub mod shaders {
     use gl::types::*;
     use std::ffi::CString;
     
+    /// A shader for 2d applications.
     pub struct Shader2D {
-        pub handle: u32,
-        pub is_bound: bool,
+        /// The 'name' or 'id' of the shader
+        pub handle: u32,        
+        /// Will be 'true' when bound.
+        pub is_bound: bool,     
     }
 
+    /// Holds a CString that contains source code for a shader. Why a own struct just for that purpose?
+    /// For uniformity and abstraction. All functions dealing with creating a shader will take in a ShaderSource.
+    /// They don't have to deal with error checking or conversion of any kind, that's all done by the
+    /// ShaderSource type, either by it's creation, or by providing methods.
     pub struct ShaderSource {
-        pub src: CString,
+        /// String that contains source code for a shader.
+        pub src: CString,       
     }
 
     impl ShaderSource {
+        /// Create a ShaderSource instance from a file.
         pub fn from_file(filename: &str) -> Self {
             Self { src: super::fileops::read_file_into_cstring(filename), }
         }
 
+        /// Create a ShaderSource instance from a Rust string.
         pub fn from_string(src: String) -> Self {
             let cstring = match CString::new(src) {
                 Ok(cs) => cs,
-                Err(e) => panic!("Don't put an trailing '\0' in you source, lad! {}", e),
+                // CString doesn't like it when you put \0's in your files.
+                Err(e) => panic!("Don't put an trailing '\0' in your source, lad! {}", e),
             };
 
             Self { src: cstring, }
         }
 
+        /// Create a ShaderSource instance form a Vec<u8>
         pub fn from_byte_vec(src: Vec<u8>) -> Self {
             Self { src: unsafe { CString::from_vec_unchecked(src) }, }
         }
     }
     
+    /// Helper function. Compile shader from given source and type.
     unsafe fn compile_shader(kind: GLenum, source: ShaderSource) -> u32 {
         let id: u32 = gl::CreateShader(kind);
         let pointer = source.src.as_ptr();
@@ -132,8 +157,9 @@ pub mod shaders {
     }
     
     impl Shader2D {
+        /// Create a shader program (vertex and fragment shader linked together) and bind it.
         pub fn new(fragment_source: ShaderSource, vertex_source: ShaderSource) -> Shader2D {
-            let handle: u32;
+            let handle: u32; // the 'name' or 'id' of the shader
             
             unsafe {
                 handle = gl::CreateProgram();
@@ -153,7 +179,7 @@ pub mod shaders {
             
             Shader2D {
                 handle,
-                is_bound: true,
+                is_bound: true, // shader was bound in the process of creating it 
             }
         }
 

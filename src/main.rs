@@ -19,7 +19,6 @@ fn main() {
     println!("OpenGL version: {}", gl_helper_functions::get_gl_string(gl::VERSION));
 
     // vertex positions
-    #[allow(unused_variables)]
     let mut positions: Vec<f32> = vec![
         -0.5, -0.5,
          0.5, -0.5,
@@ -27,35 +26,13 @@ fn main() {
         -0.5,  0.5
     ];
 
-    // create vertex buffer with vertex positons
-    let vertbuf = buffers::VertexBuffer::new(&mut positions);
+    // create vertex buffer with vertex positons. 2: 2 floats per vertex
+    let vertbuf = buffers::VertexBuffer::new(&mut positions, 2);
 
     // get source for shaders
-    let fragment_source = shaders::ShaderSource::from_file("fragment.glsl"); // currently throwing segfaults
+    let fragment_source = shaders::ShaderSource::from_file("fragment.glsl");
     let vertex_source = shaders::ShaderSource::from_file("vertex.glsl");
     
-//    let vertex_source = shaders::ShaderSource::from_string(String::from(
-//        "
-//#version 330 core\n
-//layout(location = 0) in vec4 postion;\n
-//void main()\n
-//{\n
-//   gl_Position = postion;\n
-//}\n;
-//"
-//    ));
-//
-//    let fragment_source = shaders::ShaderSource::from_string(String::from(
-//        "
-//  #version 330 core\n
-// layout(location = 0) out vec4 color;\n
-// void main()\n
-// {\n
-//    color = vec4(1.0, 0.0, 0.0, 1.0);\n
-// }\n
-//"
-//    ));
-
     // create shader
     let shader = shaders::Shader2D::new(fragment_source, vertex_source);
     
