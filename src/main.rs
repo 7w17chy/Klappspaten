@@ -77,24 +77,37 @@ extern "system" fn callbackfn(source: u32, gltype: u32, id: u32, severity: u32, 
         }
     }
 
+    if severity == gl::DEBUG_SEVERITY_MEDIUM { eprintln!("Keep going. Severity level: DEBUG_SEVERITY_MEDIUM"); }
+    else if severity == gl::DEBUG_SEVERITY_LOW { eprintln!("Keep going. Severity level: DEBUG_SEVERITY_LOW"); }
+    else if severity == gl::DEBUG_SEVERITY_NOTIFICATION { eprintln!("Keep going. Severity level: DEBUG_SEVERITY_NOTIFICATION"); }
+
+    if source == gl::DEBUG_SOURCE_API { eprintln!("Source: DEBUG_SOURCE_API"); }
+    else if source == gl::DEBUG_SOURCE_WINDOW_SYSTEM { eprintln!("Source: DEBUG_SOURCE_WINDOW_SYSTEM"); }
+    else if source == gl::DEBUG_SOURCE_SHADER_COMPILER { eprintln!("Source: DEBUG_SOURCE_SHADER_COMPILER"); }
+    else if source == gl::DEBUG_SOURCE_THIRD_PARTY { eprintln!("Source: DEBUG_SOURCE_THIRD_PARTY"); }
+    else if source == gl::DEBUG_SOURCE_APPLICATION { eprintln!("Source: DEBUG_SOURCE_APPLICATION"); }
+    else if source == gl::DEBUG_SOURCE_OTHER { eprintln!("Source: DEBUG_SOURCE_OTHER"); }
+
+    if gltype == gl::DEBUG_TYPE_ERROR { eprintln!("Type: DEBUG_TYPE_ERROR") }
+    else if gltype == gl::DEBUG_TYPE_DEPRECATED_BEHAVIOR { eprintln!("Type: DEBUG_TYPE_DEPRECATED_BEHAVIOR"); }
+    else if gltype == gl::DEBUG_TYPE_UNDEFINED_BEHAVIOR { eprintln!("Type: DEBUG_TYPE_UNDEFINED_BEHAVIOR"); }
+    else if gltype == gl::DEBUG_TYPE_PORTABILITY { eprintln!("Type: DEBUG_TYPE_PORTABILITY"); }
+    else if gltype == gl::DEBUG_TYPE_PERFORMANCE { eprintln!("Type: DEBUG_TYPE_PERFORMANCE"); }
+    else if gltype == gl::DEBUG_TYPE_MARKER { eprintln!("Type: DEBUG_TYPE_MARKER"); }
+    else if gltype == gl::DEBUG_TYPE_PUSH_GROUP { eprintln!("Type: DEBUG_TYPE_PUSH_GROUP"); }
+    else if gltype == gl::DEBUG_TYPE_POP_GROUP { eprintln!("Type: DEBUG_TYPE_POP_GROUP"); }
+    else if gltype == gl::DEBUG_TYPE_OTHER { eprintln!("Type: DEBUG_TYPE_OTHER"); }
+
     let mess = match String::from_utf8(charbuff) {
         Ok(st) => st,
         Err(e) => panic!("GL error occurred (type: {:#x}), but was unable to convert the error message to a proper string! {}",
                          gltype, e),
     };
 
-    eprintln!("\nMessage from your precious graphics card driver:\nSource: {:#x}\nType: {:#x}\nId: {:#x}\nSeverity: {:#x}\n\nMessage: {}\n",
-              source, gltype, id, severity, mess);
-
+    eprintln!("Id: {:#x}\nMessage: {}", id, mess);
     if severity == gl::DEBUG_SEVERITY_HIGH {
         eprintln!("aborting due to error (gl::DEBUG_SEVERITY_HIGH)");
-        process::abort();
-    } else if severity == gl::DEBUG_SEVERITY_MEDIUM {
-        eprintln!("Keep going. Severity level: DEBUG_SEVERITY_MEDIUM");
-    } else if severity == gl::DEBUG_SEVERITY_LOW {
-        eprintln!("Keep going. Severity level: DEBUG_SEVERITY_LOW");
-    } else if severity == gl::DEBUG_SEVERITY_NOTIFICATION {
-        eprintln!("Keep going. Severity level: DEBUG_SEVERITY_NOTIFICATION");
+        process::exit(1);
     }
 }
 
