@@ -30,6 +30,51 @@ pub mod gl_helper_functions {
 
 pub mod buffers {
     use gl::{self, types::GLenum};
+
+    pub enum BufferType {
+       VertexBuffer,
+       IndexBuffer,
+    }
+
+    pub struct BufferManager {
+        vertex_buffer: u32,
+        index_buffer: u32,
+    }
+
+    impl BufferManager {
+        pub fn new() -> Self {
+            Self {
+                vertex_buffer: 0,
+                index_buffer: 0,
+            }
+        }
+
+        pub fn increase(&mut self, btype: BufferType) -> u32 {
+            match btype {
+                crate::buffers::BufferType::VertexBuffer => { 
+                    self.vertex_buffer += 1;
+                    return self.vertex_buffer;
+                },
+                crate::buffers::BufferType::IndexBuffer => {
+                    self.vertex_buffer += 1;
+                    return self.index_buffer;
+                }
+            };
+        }
+
+        pub fn decrease(&mut self, btype: BufferType) -> u32 {
+            match btype {
+                crate::buffers::BufferType::VertexBuffer => { 
+                    self.vertex_buffer -= 1;
+                    return self.vertex_buffer;
+                },
+                crate::buffers::BufferType::IndexBuffer => {
+                    self.vertex_buffer -= 1;
+                    return self.index_buffer;
+                }
+            };
+        }
+    }
     
     /// A representation of a vertex buffer.
     pub struct VertexBuffer {
@@ -43,8 +88,8 @@ pub mod buffers {
 
     impl VertexBuffer {
         /// Create vertex buffer, binding it in the process.
-        pub fn new(positions: &mut [f32], floats_per_vertex: usize) -> VertexBuffer {
-            let mut handle: u32 = 1; // if it's set to 0 and used with gl::BindBuffer, it will unbind all currently bound buffers!
+        pub fn new(positions: &mut [f32], floats_per_vertex: usize, bm: &mut BufferManager) -> VertexBuffer {
+            let mut handle: u32 = bm.increase(BufferType::VertexBuffer); 
             let ptr: *mut u32 = &mut handle;
             unsafe {
                 gl::GenBuffers(1, ptr);
@@ -60,6 +105,8 @@ pub mod buffers {
                 gl::EnableVertexAttribArray(0);
             }
 
+            bm.increase(BufferType::VertexBuffer);
+
             VertexBuffer {
                 handle,
                 ptr,
@@ -68,13 +115,49 @@ pub mod buffers {
         }
         
         /// Bind vertex buffer. If it's already bound, do nothing
-        pub fn bind(&self, kind: GLenum) {
+        pub fn bind(&self, kind: GLenum, bm: &mut BufferManager) {
             // can't bind buffer that is already bound => do nothing
             if self.is_bound {
                 return;
             }
 
+            bm.increase(BufferType::VertexBuffer);
+
             unsafe { gl::BindBuffer(kind, self.handle); }
+        }
+    }
+
+    pub struct IndexBuffer {
+        pub name: u32,
+        pub ptr: *mut u32,
+        pub is_bound: bool,
+    }
+
+    impl IndexBuffer {
+        pub fn new(size: usize, indices: &mut Vec<u32>, bm: &mut BufferManager) -> Self {
+            let mut name = bm.increase(BufferType::IndexBuffer);
+            let ptr: *mut u32 = &mut name;
+            unsafe {
+                gl::GenBuffers(1, ptr);
+                gl::BindBuffer(gl::ELEMENT_ARRAY_BUFFER, name);
+                gl::BufferData(gl::ELEMENT_ARRAY_BUFFER, (size * std::mem::size_of::<u32>()) as isize,
+                    indices.as_mut_ptr() as *const std::ffi::c_void, gl::STATIC_DRAW);
+            }
+            
+            IndexBuffer {
+                name,
+                ptr,
+                is_bound: true,
+            }
+        }
+
+        pub fn bind(&self, bm: &mut BufferManager) {
+            if self.is_bound {
+                return;
+            }
+
+            bm.increase(BufferType::IndexBuffer);
+            unsafe { gl::BindBuffer(gl::ELEMENT_ARRAY_BUFFER, self.name); }
         }
     }
 }
