@@ -84,12 +84,19 @@ impl Shader2D {
     }
 
     /// Bind shader. If it's already bound, do nothing.
-    pub fn bind(&self) {
+    pub fn bind(&mut self) {
         if self.is_bound {
             return;         // if it's already bound, do nothing
         }
-        unsafe {
-            gl::UseProgram(self.handle);
-        }
+        self.is_bound = true;
+        unsafe { gl::UseProgram(self.handle); }
+    }
+
+    /// Get location of a uniform in the shader by its name. Shader must be bound. If it's not, the
+    /// function will throw an error.
+    pub fn get_uniform_location(&self, name: *const i8) -> Result<i32, &'static str> {
+        if !self.is_bound { return Err("Shader must be bound!"); }
+
+        unsafe { Ok(gl::GetUniformLocation(self.handle, name)) }
     }
 }

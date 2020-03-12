@@ -7,6 +7,10 @@
 pub mod buffers;
 pub mod shaders;
 
+use core::ffi::c_void;
+use std::process;
+use gl;
+
 pub mod gl_helper_functions {
     use gl::types::GLenum;
 
@@ -50,5 +54,56 @@ pub mod fileops {
             // you could match on the returned ErrorKind val, but for now, let's panic!
             Err(e) => panic!("Can't read file! {}", e),
         };
+    }
+}
+
+/// Callback function for glDebugMessageCallback.
+#[allow(unused_variables)]
+pub extern "system" fn callbackfn(source: u32, gltype: u32, id: u32, severity: u32, len: i32,
+                              message: *const i8, userparams: *mut c_void)
+{
+    let mut charbuff: Vec<u8> = Vec::new();
+    let mut counter = 0; // counts up to the length of 'message'
+    let mut ptr = message; // can't increment message itself, so increment a copy of it...
+
+    unsafe {
+        while counter < len {
+            charbuff.push(*ptr as u8);
+            ptr = ptr.wrapping_add(1); // increment pointer by 1 unit, not bytes
+            counter += 1;
+        }
+    }
+
+    if severity == gl::DEBUG_SEVERITY_MEDIUM { eprintln!("Keep going. Severity level: DEBUG_SEVERITY_MEDIUM"); }
+    else if severity == gl::DEBUG_SEVERITY_LOW { eprintln!("Keep going. Severity level: DEBUG_SEVERITY_LOW"); }
+    else if severity == gl::DEBUG_SEVERITY_NOTIFICATION { eprintln!("Keep going. Severity level: DEBUG_SEVERITY_NOTIFICATION"); }
+
+    if source == gl::DEBUG_SOURCE_API { eprintln!("Source: DEBUG_SOURCE_API"); }
+    else if source == gl::DEBUG_SOURCE_WINDOW_SYSTEM { eprintln!("Source: DEBUG_SOURCE_WINDOW_SYSTEM"); }
+    else if source == gl::DEBUG_SOURCE_SHADER_COMPILER { eprintln!("Source: DEBUG_SOURCE_SHADER_COMPILER"); }
+    else if source == gl::DEBUG_SOURCE_THIRD_PARTY { eprintln!("Source: DEBUG_SOURCE_THIRD_PARTY"); }
+    else if source == gl::DEBUG_SOURCE_APPLICATION { eprintln!("Source: DEBUG_SOURCE_APPLICATION"); }
+    else if source == gl::DEBUG_SOURCE_OTHER { eprintln!("Source: DEBUG_SOURCE_OTHER"); }
+
+    if gltype == gl::DEBUG_TYPE_ERROR { eprintln!("Type: DEBUG_TYPE_ERROR"); }
+    else if gltype == gl::DEBUG_TYPE_DEPRECATED_BEHAVIOR { eprintln!("Type: DEBUG_TYPE_DEPRECATED_BEHAVIOR"); }
+    else if gltype == gl::DEBUG_TYPE_UNDEFINED_BEHAVIOR { eprintln!("Type: DEBUG_TYPE_UNDEFINED_BEHAVIOR"); }
+    else if gltype == gl::DEBUG_TYPE_PORTABILITY { eprintln!("Type: DEBUG_TYPE_PORTABILITY"); }
+    else if gltype == gl::DEBUG_TYPE_PERFORMANCE { eprintln!("Type: DEBUG_TYPE_PERFORMANCE"); }
+    else if gltype == gl::DEBUG_TYPE_MARKER { eprintln!("Type: DEBUG_TYPE_MARKER"); }
+    else if gltype == gl::DEBUG_TYPE_PUSH_GROUP { eprintln!("Type: DEBUG_TYPE_PUSH_GROUP"); }
+    else if gltype == gl::DEBUG_TYPE_POP_GROUP { eprintln!("Type: DEBUG_TYPE_POP_GROUP"); }
+    else if gltype == gl::DEBUG_TYPE_OTHER { eprintln!("Type: DEBUG_TYPE_OTHER"); }
+
+    let mess = match String::from_utf8(charbuff) {
+        Ok(st) => st,
+        Err(e) => panic!("GL error occurred (type: {:#x}), but was unable to convert the error message to a proper string! {}",
+                         gltype, e),
+    };
+
+    eprintln!("Id: {:#x}\nMessage: {}", id, mess);
+    if severity == gl::DEBUG_SEVERITY_HIGH {
+        eprintln!("aborting due to error (gl::DEBUG_SEVERITY_HIGH)");
+        process::exit(1);
     }
 }
